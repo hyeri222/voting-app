@@ -1,5 +1,5 @@
 import "server-only";
-import { sql } from "./db";
+import { db } from "./db";
 
 export const MIN_OPTIONS = 2;
 export const MAX_OPTIONS = 10;
@@ -26,7 +26,7 @@ export type Poll = {
 };
 
 export async function listPolls(): Promise<PollSummary[]> {
-  const rows = await sql`
+  const rows = await db()`
     SELECT p.id, p.question, p.closed_at IS NOT NULL AS closed, p.created_at,
            (SELECT count(*) FROM votes v WHERE v.poll_id = p.id)::int AS vote_count
     FROM polls p
@@ -42,9 +42,9 @@ export async function listPolls(): Promise<PollSummary[]> {
 }
 
 export async function getPoll(id: number): Promise<Poll | null> {
-  const [polls, options] = await sql.transaction([
-    sql`SELECT id, question, closed_at IS NOT NULL AS closed FROM polls WHERE id = ${id}`,
-    sql`
+  const [polls, options] = await db().transaction([
+    db()`SELECT id, question, closed_at IS NOT NULL AS closed FROM polls WHERE id = ${id}`,
+    db()`
       SELECT o.id, o.label, count(v.id)::int AS votes
       FROM options o LEFT JOIN votes v ON v.option_id = o.id
       WHERE o.poll_id = ${id}
@@ -63,12 +63,12 @@ export async function getPoll(id: number): Promise<Poll | null> {
 }
 
 export async function getVotedOptionId(pollId: number, voterId: string): Promise<number | null> {
-  const rows = await sql`SELECT option_id FROM votes WHERE poll_id = ${pollId} AND voter_id = ${voterId}`;
+  const rows = await db()`SELECT option_id FROM votes WHERE poll_id = ${pollId} AND voter_id = ${voterId}`;
   return rows[0]?.option_id ?? null;
 }
 
 export async function createPoll(question: string, options: string[]): Promise<number> {
-  const rows = await sql`
+  const rows = await db()`
     WITH p AS (
       INSERT INTO polls (question) VALUES (${question}) RETURNING id
     ), o AS (
@@ -81,16 +81,16 @@ export async function createPoll(question: string, options: string[]): Promise<n
 }
 
 export async function closePoll(id: number) {
-  await sql`UPDATE polls SET closed_at = now() WHERE id = ${id} AND closed_at IS NULL`;
+  await db()`UPDATE polls SET closed_at = now() WHERE id = ${id} AND closed_at IS NULL`;
 }
 
 export async function deletePoll(id: number) {
-  await sql`DELETE FROM polls WHERE id = ${id}`;
+  await db()`DELETE FROM polls WHERE id = ${id}`;
 }
 
 /** Returns false if the poll is closed, the option doesn't belong to it, or this voter already voted. */
 export async function castVote(pollId: number, optionId: number, voterId: string): Promise<boolean> {
-  const rows = await sql`
+  const rows = await db()`
     INSERT INTO votes (poll_id, option_id, voter_id)
     SELECT o.poll_id, o.id, ${voterId}
     FROM options o JOIN polls p ON p.id = o.poll_id
