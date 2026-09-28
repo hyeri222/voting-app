@@ -5,11 +5,11 @@ const MINUTE = 60 * 1000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
 
-export const MAX_DEADLINE_DAYS = 30;
+const MAX_DEADLINE_DAYS = 30;
 const DEFAULT_DEADLINE_HOURS = 24;
 
 /** A datetime-local value ("YYYY-MM-DDTHH:mm") showing `date` in Korea time. */
-export function toKstInputValue(date: Date): string {
+function toKstInputValue(date: Date): string {
   return new Date(date.getTime() + KST_OFFSET_MS).toISOString().slice(0, 16);
 }
 
@@ -23,6 +23,17 @@ export function parseKstInputValue(value: string): Date | null {
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) return null;
   const date = new Date(`${value}:00+09:00`);
   return Number.isNaN(date.getTime()) ? null : date;
+}
+
+/** Why a new 마감 시각 isn't allowed, or null if it is: at least `minLeadSeconds` ahead, within 30 days. */
+export function checkDeadline(deadline: Date, minLeadSeconds: number): string | null {
+  const msAhead = deadline.getTime() - Date.now();
+  if (msAhead < minLeadSeconds * 1000) {
+    const lead = minLeadSeconds < 60 ? `${minLeadSeconds}초` : `${Math.round(minLeadSeconds / 60)}분`;
+    return `마감 시각은 지금부터 ${lead} 뒤보다 늦어야 합니다.`;
+  }
+  if (msAhead > MAX_DEADLINE_DAYS * DAY) return `마감 시각은 ${MAX_DEADLINE_DAYS}일 이내여야 합니다.`;
+  return null;
 }
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];

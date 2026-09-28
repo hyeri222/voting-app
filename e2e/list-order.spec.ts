@@ -1,7 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { closePoll, createPoll, uniqueQuestion } from "./helpers";
+import { closePoll, createPoll, kstInput, uniqueQuestion } from "./helpers";
 
-const kstInput = (offsetMs: number) => new Date(Date.now() + offsetMs + 9 * 3_600_000).toISOString().slice(0, 16);
 const DAY = 24 * 3_600_000;
 
 test("홈 목록은 열린 투표를 마감 시각이 가까운 순으로 먼저, 그 아래에 마감된 투표를 보여 준다", async ({

@@ -104,7 +104,8 @@ export async function createPoll(question: string, options: string[], deadline: 
 }
 
 export async function closePoll(id: number) {
-  await db()`UPDATE polls SET closed_at = now() WHERE id = ${id} AND closed_at IS NULL`;
+  // Only open 투표: one whose 마감 시각 has passed is already 마감.
+  await db()`UPDATE polls SET closed_at = now() WHERE id = ${id} AND closed_at IS NULL AND deadline > now()`;
 }
 
 export async function deletePoll(id: number) {

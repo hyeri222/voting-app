@@ -1,13 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { fillPollForm, logInAsOperator, uniqueQuestion } from "./helpers";
+import { fillPollForm, kstInput, logInAsOperator, uniqueQuestion } from "./helpers";
 
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * HOUR;
-
-/** "YYYY-MM-DDTHH:mm" in Korea time for a moment `offsetMs` from now. */
-function kstInput(offsetMs: number) {
-  return new Date(Date.now() + offsetMs + 9 * HOUR).toISOString().slice(0, 16);
-}
 
 /** Reads a datetime-local value as Korea time. */
 function fromKstInput(value: string) {
@@ -72,4 +67,5 @@ test("새 투표의 페이지, 홈 목록, 운영 화면에 마감 시각과 남
   await page.goto("/operator");
   const operatorRow = page.getByRole("listitem").filter({ hasText: question });
   await expect(operatorRow).toContainText(deadlineText);
+  await expect(operatorRow).toContainText(remaining);
 });

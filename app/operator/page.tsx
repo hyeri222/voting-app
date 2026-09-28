@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { closePollAction } from "@/app/actions";
 import { requireOperator } from "@/lib/auth";
-import { defaultDeadlineInputValue, formatDeadline } from "@/lib/deadline";
+import { defaultDeadlineInputValue, formatDeadline, formatRemaining } from "@/lib/deadline";
 import { listPolls } from "@/lib/polls";
 import { DeletePollButton } from "./delete-poll-button";
 import { NewPollForm } from "./new-poll-form";
@@ -32,7 +32,11 @@ export default async function OperatorPage() {
                   <Link href={`/polls/${poll.id}`} className="font-medium hover:underline">
                     {poll.question}
                   </Link>
-                  {!poll.closed && <span className="text-sm text-zinc-500">{formatDeadline(poll.deadline)}</span>}
+                  {!poll.closed && (
+                    <span className="text-sm text-zinc-500">
+                      {formatDeadline(poll.deadline)} · {formatRemaining(poll.msLeft)}
+                    </span>
+                  )}
                 </div>
                 <div className="flex shrink-0 items-center gap-3 text-sm">
                   <span className="text-zinc-500">{poll.voteCount}표</span>

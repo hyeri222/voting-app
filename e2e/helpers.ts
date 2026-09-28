@@ -24,13 +24,18 @@ export async function fillPollForm(page: Page, question: string, options: string
   }
 }
 
+/** A datetime-local value ("YYYY-MM-DDTHH:mm") in Korea time for a moment `offsetMs` from now. */
+export function kstInput(offsetMs: number) {
+  return new Date(Date.now() + offsetMs + 9 * 60 * 60 * 1000).toISOString().slice(0, 16);
+}
+
 /**
  * A 마감 시각 that passes soon: the first whole minute at least 10 seconds away (the form has
  * minute precision and the E2E server's minimum lead is 5 seconds). Up to ~70 seconds of waiting.
  */
 export function soonDeadline() {
   const at = Math.ceil((Date.now() + 10_000) / 60_000) * 60_000;
-  const input = new Date(at + 9 * 60 * 60 * 1000).toISOString().slice(0, 16);
+  const input = kstInput(at - Date.now());
   return { input, at };
 }
 

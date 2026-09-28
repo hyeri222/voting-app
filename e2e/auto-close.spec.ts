@@ -1,6 +1,5 @@
 import { expect, test } from "@playwright/test";
 import {
-  castVote,
   createPoll,
   logInAsOperator,
   newVoter,
@@ -34,7 +33,9 @@ test("마감 시각 전에 열어 둔 폼으로 늦게 제출해도 표가 들�
   test.slow();
   const { input, at } = soonDeadline();
   const poll = await createPoll(browser, uniqueQuestion("늦은 제출"), ["예", "아니요"], { deadline: input });
-  const voter = await newVoter(browser);
+  // Without JavaScript the countdown can't refresh the page at the deadline, so the form stays up
+  // like a truly stale page, and it still submits as a plain HTML form.
+  const voter = await (await browser.newContext({ javaScriptEnabled: false })).newPage();
   await voter.goto(poll);
   await voter.getByRole("radio", { name: "예" }).check();
 
