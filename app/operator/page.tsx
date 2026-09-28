@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { closePollAction } from "@/app/actions";
 import { requireOperator } from "@/lib/auth";
+import { defaultDeadlineInputValue, formatDeadline } from "@/lib/deadline";
 import { listPolls } from "@/lib/polls";
 import { DeletePollButton } from "./delete-poll-button";
 import { NewPollForm } from "./new-poll-form";
@@ -13,7 +14,7 @@ export default async function OperatorPage() {
     <div className="flex flex-col gap-10">
       <section className="flex flex-col gap-4">
         <h1 className="text-2xl font-semibold">새 투표</h1>
-        <NewPollForm />
+        <NewPollForm defaultDeadline={defaultDeadlineInputValue()} />
       </section>
 
       <section className="flex flex-col gap-4">
@@ -27,9 +28,12 @@ export default async function OperatorPage() {
                 key={poll.id}
                 className="flex items-center justify-between gap-4 rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950"
               >
-                <Link href={`/polls/${poll.id}`} className="font-medium hover:underline">
-                  {poll.question}
-                </Link>
+                <div className="flex min-w-0 flex-col gap-1">
+                  <Link href={`/polls/${poll.id}`} className="font-medium hover:underline">
+                    {poll.question}
+                  </Link>
+                  {!poll.closed && <span className="text-sm text-zinc-500">{formatDeadline(poll.deadline)}</span>}
+                </div>
                 <div className="flex shrink-0 items-center gap-3 text-sm">
                   <span className="text-zinc-500">{poll.voteCount}표</span>
                   {poll.closed ? (

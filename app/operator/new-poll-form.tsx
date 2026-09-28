@@ -10,7 +10,8 @@ const MAX_OPTIONS = 10;
 const inputClass =
   "w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950";
 
-export function NewPollForm() {
+/** `defaultDeadline` is computed on the server so the prefilled value doesn't differ at hydration. */
+export function NewPollForm({ defaultDeadline }: { defaultDeadline: string }) {
   const [state, action, pending] = useActionState(createPollAction, {} as PollFormState);
   // Stable keys so removing a middle field doesn't shift typed values around.
   const [optionKeys, setOptionKeys] = useState([0, 1]);
@@ -58,6 +59,16 @@ export function NewPollForm() {
           + 선택지 추가
         </button>
       )}
+      <label className="flex flex-col gap-1 text-sm">
+        마감 시각
+        <input
+          name="deadline"
+          type="datetime-local"
+          required
+          defaultValue={state.values?.deadline ?? defaultDeadline}
+          className={inputClass}
+        />
+      </label>
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}
       <button
         disabled={pending}

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatRemaining } from "@/lib/deadline";
 import { listPolls } from "@/lib/polls";
 
 export default async function Home() {
@@ -19,7 +20,11 @@ export default async function Home() {
               >
                 <span className="font-medium">{poll.question}</span>
                 <span className="shrink-0 text-sm text-zinc-500">
-                  {poll.closed && <span className="mr-2 rounded bg-zinc-200 px-1.5 py-0.5 dark:bg-zinc-800">마감</span>}
+                  {poll.closed ? (
+                    <span className="mr-2 rounded bg-zinc-200 px-1.5 py-0.5 dark:bg-zinc-800">마감</span>
+                  ) : (
+                    <span className="mr-2">{formatRemaining(poll.msLeft)}</span>
+                  )}
                   {poll.voteCount}표
                 </span>
               </Link>

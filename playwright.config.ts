@@ -33,5 +33,7 @@ export default defineConfig({
     url: `http://localhost:${PORT}`,
     reuseExistingServer: false,
     timeout: 120_000,
+    // Lets deadline tests create 투표 that close within seconds instead of the 5-minute minimum.
+    env: { DEADLINE_MIN_LEAD_SECONDS: "5" },
   },
 });

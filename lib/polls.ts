@@ -4,6 +4,13 @@ import { db } from "./db";
 export const MIN_OPTIONS = 2;
 export const MAX_OPTIONS = 10;
 
+/** How far ahead a new 마감 시각 must be. 5 minutes; the E2E server lowers it via env. */
+export function minDeadlineLeadSeconds(): number {
+  const raw = process.env.DEADLINE_MIN_LEAD_SECONDS;
+  const fromEnv = raw ? Number(raw) : NaN;
+  return Number.isFinite(fromEnv) && fromEnv >= 0 ? fromEnv : 5 * 60;
+}
+
 /** Parses a 투표 or 선택지 id from a URL segment or form field; null if it isn't a positive integer. */
 export function parseId(value: unknown): number | null {
   const id = Number(value);
@@ -14,7 +21,9 @@ export type PollSummary = {
   id: number;
   question: string;
   closed: boolean;
-  createdAt: Date;
+  deadline: Date;
+  /** Time until the 마감 시각 by the database clock; negative once it has passed. */
+  msLeft: number;
   voteCount: number;
 };
 
@@ -22,12 +31,16 @@ export type Poll = {
   id: number;
   question: string;
   closed: boolean;
+  deadline: Date;
+  /** Time until the 마감 시각 by the database clock; negative once it has passed. */
+  msLeft: number;
   options: { id: number; label: string; votes: number }[];
 };
 
 export async function listPolls(): Promise<PollSummary[]> {
   const rows = await db()`
-    SELECT p.id, p.question, p.closed_at IS NOT NULL AS closed, p.created_at,
+    SELECT p.id, p.question, p.closed_at IS NOT NULL AS closed, p.deadline,
+           (EXTRACT(EPOCH FROM p.deadline - now()) * 1000)::float8 AS ms_left,
            (SELECT count(*) FROM votes v WHERE v.poll_id = p.id)::int AS vote_count
     FROM polls p
     ORDER BY p.created_at DESC
@@ -36,14 +49,16 @@ export async function listPolls(): Promise<PollSummary[]> {
     id: r.id,
     question: r.question,
     closed: r.closed,
-    createdAt: new Date(r.created_at),
+    deadline: new Date(r.deadline),
+    msLeft: r.ms_left,
     voteCount: r.vote_count,
   }));
 }
 
 export async function getPoll(id: number): Promise<Poll | null> {
   const [polls, options] = await db().transaction([
-    db()`SELECT id, question, closed_at IS NOT NULL AS closed FROM polls WHERE id = ${id}`,
+    db()`SELECT id, question, closed_at IS NOT NULL AS closed, deadline,
+      (EXTRACT(EPOCH FROM deadline - now()) * 1000)::float8 AS ms_left FROM polls WHERE id = ${id}`,
     db()`
       SELECT o.id, o.label, count(v.id)::int AS votes
       FROM options o LEFT JOIN votes v ON v.option_id = o.id
@@ -58,6 +73,8 @@ export async function getPoll(id: number): Promise<Poll | null> {
     id: poll.id,
     question: poll.question,
     closed: poll.closed,
+    deadline: new Date(poll.deadline),
+    msLeft: poll.ms_left,
     options: options.map((o) => ({ id: o.id, label: o.label, votes: o.votes })),
   };
 }
@@ -67,10 +84,10 @@ export async function getVotedOptionId(pollId: number, voterId: string): Promise
   return rows[0]?.option_id ?? null;
 }
 
-export async function createPoll(question: string, options: string[]): Promise<number> {
+export async function createPoll(question: string, options: string[], deadline: Date): Promise<number> {
   const rows = await db()`
     WITH p AS (
-      INSERT INTO polls (question) VALUES (${question}) RETURNING id
+      INSERT INTO polls (question, deadline) VALUES (${question}, ${deadline}) RETURNING id
     ), o AS (
       INSERT INTO options (poll_id, label, position)
       SELECT p.id, t.label, t.ord FROM p, unnest(${options}::text[]) WITH ORDINALITY AS t(label, ord)

@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { voteAction } from "@/app/actions";
 import { isOperator } from "@/lib/auth";
+import { formatDeadline, formatRemaining } from "@/lib/deadline";
 import { getPoll, getVotedOptionId, parseId, type Poll } from "@/lib/polls";
 import { getVoterId } from "@/lib/voter";
 
@@ -24,6 +25,11 @@ export default async function PollPage({ params }: PageProps<"/polls/[id]">) {
           <span className="shrink-0 rounded bg-zinc-200 px-2 py-1 text-sm dark:bg-zinc-800">마감</span>
         )}
       </div>
+      {!poll.closed && (
+        <p className="-mt-4 text-sm text-zinc-500">
+          {formatDeadline(poll.deadline)} · {formatRemaining(poll.msLeft)}
+        </p>
+      )}
 
       {canVote && (
         <form action={voteAction} className="flex flex-col gap-2">
