@@ -67,10 +67,10 @@ export async function getVotedOptionId(pollId: number, voterId: string): Promise
   return rows[0]?.option_id ?? null;
 }
 
-export async function createPoll(question: string, options: string[], operatorId: number): Promise<number> {
+export async function createPoll(question: string, options: string[]): Promise<number> {
   const rows = await sql`
     WITH p AS (
-      INSERT INTO polls (question, created_by) VALUES (${question}, ${operatorId}) RETURNING id
+      INSERT INTO polls (question) VALUES (${question}) RETURNING id
     ), o AS (
       INSERT INTO options (poll_id, label, position)
       SELECT p.id, t.label, t.ord FROM p, unnest(${options}::text[]) WITH ORDINALITY AS t(label, ord)

@@ -1,20 +1,6 @@
-CREATE TABLE IF NOT EXISTS operators (
-  id            serial PRIMARY KEY,
-  username      text NOT NULL UNIQUE,
-  password_hash text NOT NULL,
-  created_at    timestamptz NOT NULL DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS operator_sessions (
-  token_hash  text PRIMARY KEY,
-  operator_id integer NOT NULL REFERENCES operators(id) ON DELETE CASCADE,
-  expires_at  timestamptz NOT NULL
-);
-
 CREATE TABLE IF NOT EXISTS polls (
   id          serial PRIMARY KEY,
   question    text NOT NULL,
-  created_by  integer REFERENCES operators(id) ON DELETE SET NULL,
   closed_at   timestamptz,
   created_at  timestamptz NOT NULL DEFAULT now()
 );
@@ -36,3 +22,8 @@ CREATE TABLE IF NOT EXISTS votes (
 );
 
 CREATE INDEX IF NOT EXISTS options_poll_id_idx ON options(poll_id);
+
+-- Cleanup from when 운영자 accounts and sessions lived in the database.
+ALTER TABLE polls DROP COLUMN IF EXISTS created_by;
+DROP TABLE IF EXISTS operator_sessions;
+DROP TABLE IF EXISTS operators;

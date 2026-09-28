@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { voteAction } from "@/app/actions";
-import { getOperator } from "@/lib/auth";
+import { isOperator } from "@/lib/auth";
 import { getPoll, getVotedOptionId, parseId, type Poll } from "@/lib/polls";
 import { getVoterId } from "@/lib/voter";
 
@@ -9,11 +9,11 @@ export default async function PollPage({ params }: PageProps<"/polls/[id]">) {
   const poll = id ? await getPoll(id) : null;
   if (!poll) notFound();
 
-  const [operator, voterId] = await Promise.all([getOperator(), getVoterId()]);
+  const [operatorLoggedIn, voterId] = await Promise.all([isOperator(), getVoterId()]);
   const votedOptionId = voterId ? await getVotedOptionId(poll.id, voterId) : null;
   const canVote = !poll.closed && votedOptionId === null;
   // Results are shown only after voting, so earlier results don't sway the vote. Operators always see them.
-  const canSeeResults = votedOptionId !== null || operator !== null;
+  const canSeeResults = votedOptionId !== null || operatorLoggedIn;
 
   return (
     <div className="flex flex-col gap-6">

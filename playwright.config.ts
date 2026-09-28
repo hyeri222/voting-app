@@ -1,11 +1,11 @@
-import { existsSync } from "node:fs";
 import { defineConfig } from "@playwright/test";
 
-// TEST_DATABASE_URL must point at a separate Neon branch; e2e/global-setup.ts truncates it.
-if (existsSync(".env.test.local")) process.loadEnvFile(".env.test.local");
-// Fail here: the web server starts before globalSetup and would otherwise hang until timeout.
-if (!process.env.TEST_DATABASE_URL) {
-  throw new Error("TEST_DATABASE_URL is not set. Put a Neon test branch URL in .env.test.local.");
+// Tests run against the same .env.local the app uses (DATABASE_URL, ADMIN_PASSWORD,
+// SESSION_SECRET). They only add 투표 with unique 질문 text and never wipe data.
+process.loadEnvFile(".env.local");
+for (const name of ["DATABASE_URL", "ADMIN_PASSWORD", "SESSION_SECRET"]) {
+  // Fail here: the web server starts before globalSetup and would otherwise hang until timeout.
+  if (!process.env[name]) throw new Error(`${name} is not set in .env.local`);
 }
 
 const PORT = 3100;
@@ -13,7 +13,7 @@ const PORT = 3100;
 export default defineConfig({
   testDir: "e2e",
   globalSetup: "./e2e/global-setup.ts",
-  // Tests share one database, but each creates its own 투표, so they can run in parallel.
+  // Each test creates its own 투표, so tests can run in parallel against one database.
   fullyParallel: true,
   // More workers just queue up behind the single dev server and Neon round-trips.
   workers: 4,
@@ -33,7 +33,5 @@ export default defineConfig({
     url: `http://localhost:${PORT}`,
     reuseExistingServer: false,
     timeout: 120_000,
-    // Next doesn't override variables already in process.env, so this wins over .env.local.
-    env: { DATABASE_URL: process.env.TEST_DATABASE_URL },
   },
 });

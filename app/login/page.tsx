@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
-import { getOperator } from "@/lib/auth";
+import { isOperator } from "@/lib/auth";
 import { LoginForm } from "./login-form";
 
 export default async function LoginPage() {
-  if (await getOperator()) redirect("/operator");
+  if (await isOperator()) redirect("/operator");
 
   return (
     <div className="mx-auto flex max-w-sm flex-col gap-4">

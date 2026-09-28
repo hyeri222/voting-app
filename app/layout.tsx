@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
-import { getOperator } from "@/lib/auth";
+import { isOperator } from "@/lib/auth";
 import { logOutAction } from "./actions";
 import "./globals.css";
 
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const operator = await getOperator();
+  const operatorLoggedIn = await isOperator();
 
   return (
     <html
@@ -34,12 +34,11 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             <Link href="/" className="text-lg font-semibold">
               투표
             </Link>
-            {operator ? (
+            {operatorLoggedIn ? (
               <div className="flex items-center gap-4 text-sm">
                 <Link href="/operator" className="hover:underline">
                   운영
                 </Link>
-                <span className="text-zinc-500">{operator.username}</span>
                 <form action={logOutAction}>
                   <button className="text-zinc-500 hover:underline">로그아웃</button>
                 </form>

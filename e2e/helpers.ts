@@ -1,7 +1,5 @@
 import { expect, type Browser, type Page } from "@playwright/test";
 
-export const OPERATOR = { username: "e2e-operator", password: "e2e-password-1234" };
-
 /** A 질문 no other test will use, so tests can run in parallel against one database. */
 export function uniqueQuestion(label: string) {
   return `${label} ${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -9,8 +7,8 @@ export function uniqueQuestion(label: string) {
 
 export async function logInAsOperator(page: Page) {
   await page.goto("/login");
-  await page.getByPlaceholder("아이디").fill(OPERATOR.username);
-  await page.getByPlaceholder("비밀번호").fill(OPERATOR.password);
+  // playwright.config.ts loads .env.local, so this is the app's real ADMIN_PASSWORD.
+  await page.getByPlaceholder("비밀번호").fill(process.env.ADMIN_PASSWORD!);
   await page.getByRole("button", { name: "로그인" }).click();
   await expect(page).toHaveURL("/operator");
 }

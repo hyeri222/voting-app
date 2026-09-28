@@ -3,22 +3,18 @@
 import { useActionState } from "react";
 import { logInAction, type FormState } from "@/app/actions";
 
-const inputClass =
-  "rounded-lg border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950";
-
 export function LoginForm() {
   const [state, action, pending] = useActionState(logInAction, {} as FormState);
 
   return (
     <form action={action} className="flex flex-col gap-3">
-      <input name="username" placeholder="아이디" autoComplete="username" required className={inputClass} />
       <input
         name="password"
         type="password"
         placeholder="비밀번호"
         autoComplete="current-password"
         required
-        className={inputClass}
+        className="rounded-lg border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950"
       />
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}
       <button

@@ -9,10 +9,9 @@ import { getOrCreateVoterId } from "@/lib/voter";
 export type FormState = { error?: string };
 
 export async function logInAction(_prev: FormState, formData: FormData): Promise<FormState> {
-  const username = String(formData.get("username") ?? "").trim();
   const password = String(formData.get("password") ?? "");
-  if (!(await logIn(username, password))) {
-    return { error: "아이디 또는 비밀번호가 올바르지 않습니다." };
+  if (!(await logIn(password))) {
+    return { error: "비밀번호가 올바르지 않습니다." };
   }
   redirect("/operator");
 }
@@ -26,7 +25,7 @@ export async function logOutAction() {
 export type PollFormState = FormState & { values?: { question: string; options: string[] } };
 
 export async function createPollAction(_prev: PollFormState, formData: FormData): Promise<PollFormState> {
-  const operator = await requireOperator();
+  await requireOperator();
   const rawQuestion = String(formData.get("question") ?? "");
   const rawOptions = formData.getAll("option").map(String);
   const question = rawQuestion.trim();
@@ -39,7 +38,7 @@ export async function createPollAction(_prev: PollFormState, formData: FormData)
   }
   if (new Set(options).size !== options.length) return fail("선택지가 중복되었습니다.");
 
-  const id = await polls.createPoll(question, options, operator.id);
+  const id = await polls.createPoll(question, options);
   revalidatePath("/");
   redirect(`/polls/${id}`);
 }
