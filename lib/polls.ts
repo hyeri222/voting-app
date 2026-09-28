@@ -17,6 +17,9 @@ export function parseId(value: unknown): number | null {
   return Number.isInteger(id) && id > 0 ? id : null;
 }
 
+// A 투표 is 마감 once the 운영자 closes it or its 마감 시각 passes, judged by the database clock
+// in every query below, so nothing has to run at the deadline.
+
 export type PollSummary = {
   id: number;
   question: string;
@@ -39,7 +42,7 @@ export type Poll = {
 
 export async function listPolls(): Promise<PollSummary[]> {
   const rows = await db()`
-    SELECT p.id, p.question, p.closed_at IS NOT NULL AS closed, p.deadline,
+    SELECT p.id, p.question, (p.closed_at IS NOT NULL OR p.deadline <= now()) AS closed, p.deadline,
            (EXTRACT(EPOCH FROM p.deadline - now()) * 1000)::float8 AS ms_left,
            (SELECT count(*) FROM votes v WHERE v.poll_id = p.id)::int AS vote_count
     FROM polls p
@@ -57,7 +60,7 @@ export async function listPolls(): Promise<PollSummary[]> {
 
 export async function getPoll(id: number): Promise<Poll | null> {
   const [polls, options] = await db().transaction([
-    db()`SELECT id, question, closed_at IS NOT NULL AS closed, deadline,
+    db()`SELECT id, question, (closed_at IS NOT NULL OR deadline <= now()) AS closed, deadline,
       (EXTRACT(EPOCH FROM deadline - now()) * 1000)::float8 AS ms_left FROM polls WHERE id = ${id}`,
     db()`
       SELECT o.id, o.label, count(v.id)::int AS votes
@@ -111,7 +114,7 @@ export async function castVote(pollId: number, optionId: number, voterId: string
     INSERT INTO votes (poll_id, option_id, voter_id)
     SELECT o.poll_id, o.id, ${voterId}
     FROM options o JOIN polls p ON p.id = o.poll_id
-    WHERE o.id = ${optionId} AND o.poll_id = ${pollId} AND p.closed_at IS NULL
+    WHERE o.id = ${optionId} AND o.poll_id = ${pollId} AND p.closed_at IS NULL AND p.deadline > now()
     ON CONFLICT (poll_id, voter_id) DO NOTHING
     RETURNING id
   `;

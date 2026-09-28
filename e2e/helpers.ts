@@ -24,12 +24,33 @@ export async function fillPollForm(page: Page, question: string, options: string
   }
 }
 
+/**
+ * A 마감 시각 that passes soon: the first whole minute at least 10 seconds away (the form has
+ * minute precision and the E2E server's minimum lead is 5 seconds). Up to ~70 seconds of waiting.
+ */
+export function soonDeadline() {
+  const at = Math.ceil((Date.now() + 10_000) / 60_000) * 60_000;
+  const input = new Date(at + 9 * 60 * 60 * 1000).toISOString().slice(0, 16);
+  return { input, at };
+}
+
+/** Waits until a moment given in epoch ms has passed, plus a margin for clock differences. */
+export async function waitUntilPast(page: Page, at: number) {
+  await page.waitForTimeout(Math.max(0, at - Date.now()) + 2_000);
+}
+
 /** Creates a 투표 as the 운영자 in a throwaway context and returns its URL path. */
-export async function createPoll(browser: Browser, question: string, options: string[]) {
+export async function createPoll(
+  browser: Browser,
+  question: string,
+  options: string[],
+  { deadline }: { deadline?: string } = {},
+) {
   const context = await browser.newContext();
   const page = await context.newPage();
   await logInAsOperator(page);
   await fillPollForm(page, question, options);
+  if (deadline) await page.getByLabel("마감 시각").fill(deadline);
   await page.getByRole("button", { name: "투표 만들기" }).click();
   await expect(page).toHaveURL(/\/polls\/\d+$/);
   const path = new URL(page.url()).pathname;
