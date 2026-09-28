@@ -124,3 +124,25 @@ test("표가 없으면 1위가 표시되지 않는다", async ({ browser, page }
   await expect(resultsHeading(page)).toHaveText("결과 · 총 0표");
   await expect(page.getByText("1위", { exact: true })).toHaveCount(0);
 });
+
+test("결과 그래프의 막대 길이는 표 수에 비례한다", async ({ browser }) => {
+  const poll = await createPoll(browser, uniqueQuestion("그래프"), ["짜장", "짬뽕"]);
+  for (const option of ["짜장", "짜장", "짬뽕"]) {
+    const voter = await newVoter(browser);
+    await voter.goto(poll);
+    await castVote(voter, option);
+    await voter.context().close();
+  }
+  const viewer = await newVoter(browser);
+  await viewer.goto(poll);
+  await castVote(viewer, "짜장");
+
+  // 짜장 3표(75%), 짬뽕 1표(25%)
+  const big = viewer.getByRole("meter", { name: "짜장" });
+  const small = viewer.getByRole("meter", { name: "짬뽕" });
+  await expect(big).toHaveAttribute("aria-valuenow", "75");
+  await expect(small).toHaveAttribute("aria-valuenow", "25");
+  const [bigBox, smallBox] = [await big.boundingBox(), await small.boundingBox()];
+  expect(bigBox!.width / smallBox!.width).toBeGreaterThan(2.7);
+  expect(bigBox!.width / smallBox!.width).toBeLessThan(3.3);
+});

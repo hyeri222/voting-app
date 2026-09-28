@@ -46,7 +46,10 @@ export async function listPolls(): Promise<PollSummary[]> {
            (EXTRACT(EPOCH FROM p.deadline - now()) * 1000)::float8 AS ms_left,
            (SELECT count(*) FROM votes v WHERE v.poll_id = p.id)::int AS vote_count
     FROM polls p
-    ORDER BY p.created_at DESC
+    -- Open 투표 first, soonest 마감 시각 on top; then 마감 투표, most recently 마감 first.
+    ORDER BY (p.closed_at IS NOT NULL OR p.deadline <= now()),
+             CASE WHEN p.closed_at IS NULL AND p.deadline > now() THEN p.deadline END ASC,
+             LEAST(p.closed_at, p.deadline) DESC
   `;
   return rows.map((r) => ({
     id: r.id,

@@ -1,9 +1,10 @@
 import { notFound } from "next/navigation";
 import { voteAction } from "@/app/actions";
 import { isOperator } from "@/lib/auth";
-import { formatDeadline, formatRemaining } from "@/lib/deadline";
+import { formatDeadline } from "@/lib/deadline";
 import { getPoll, getVotedOptionId, parseId, type Poll } from "@/lib/polls";
 import { getVoterId } from "@/lib/voter";
+import { Countdown } from "./countdown";
 
 export default async function PollPage({ params }: PageProps<"/polls/[id]">) {
   const id = parseId((await params).id);
@@ -27,7 +28,7 @@ export default async function PollPage({ params }: PageProps<"/polls/[id]">) {
       </div>
       {!poll.closed && (
         <p className="-mt-4 text-sm text-zinc-500">
-          {formatDeadline(poll.deadline)} · {formatRemaining(poll.msLeft)}
+          {formatDeadline(poll.deadline)} · <Countdown msLeft={poll.msLeft} />
         </p>
       )}
 
@@ -64,14 +65,14 @@ function Results({ poll, votedOptionId }: { poll: Poll; votedOptionId: number | 
   return (
     <section className="flex flex-col gap-3">
       <h2 className="text-lg font-semibold">결과 · 총 {total}표</h2>
-      <ul className="flex flex-col gap-3">
+      <ul className="flex flex-col gap-4">
         {poll.options.map((option) => {
           const percent = total === 0 ? 0 : Math.round((option.votes / total) * 100);
           const mine = option.id === votedOptionId;
           const winner = topVotes > 0 && option.votes === topVotes;
           return (
-            <li key={option.id} className="flex flex-col gap-1">
-              <div className="flex justify-between text-sm">
+            <li key={option.id} className="flex flex-col gap-1.5">
+              <div className="flex items-baseline justify-between gap-4 text-sm">
                 <span className={mine ? "font-semibold" : undefined}>
                   {option.label}
                   {mine && " (내 선택)"}
@@ -81,13 +82,18 @@ function Results({ poll, votedOptionId }: { poll: Poll; votedOptionId: number | 
                     </span>
                   )}
                 </span>
-                <span className="text-zinc-500">
+                <span className="shrink-0 tabular-nums text-zinc-500">
                   {option.votes}표 · {percent}%
                 </span>
               </div>
-              <div className="h-2 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800">
+              <div className="h-8 w-full overflow-hidden rounded-md bg-zinc-100 dark:bg-zinc-900">
                 <div
-                  className={`h-full rounded-full ${winner ? "bg-amber-500" : "bg-zinc-900 dark:bg-zinc-100"}`}
+                  role="meter"
+                  aria-label={option.label}
+                  aria-valuenow={percent}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  className={`h-full rounded-md ${winner ? "bg-amber-400 dark:bg-amber-500" : "bg-zinc-400 dark:bg-zinc-600"}`}
                   style={{ width: `${percent}%` }}
                 />
               </div>
