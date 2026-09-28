@@ -1,0 +1,96 @@
+import "server-only";
+import { sql } from "./db";
+
+export const MIN_OPTIONS = 2;
+export const MAX_OPTIONS = 10;
+
+export type PollSummary = {
+  id: number;
+  question: string;
+  closed: boolean;
+  createdAt: Date;
+  voteCount: number;
+};
+
+export type Poll = {
+  id: number;
+  question: string;
+  closed: boolean;
+  options: { id: number; label: string; votes: number }[];
+};
+
+export async function listPolls(): Promise<PollSummary[]> {
+  const rows = await sql`
+    SELECT p.id, p.question, p.closed_at IS NOT NULL AS closed, p.created_at,
+           (SELECT count(*) FROM votes v WHERE v.poll_id = p.id)::int AS vote_count
+    FROM polls p
+    ORDER BY p.created_at DESC
+  `;
+  return rows.map((r) => ({
+    id: r.id,
+    question: r.question,
+    closed: r.closed,
+    createdAt: new Date(r.created_at),
+    voteCount: r.vote_count,
+  }));
+}
+
+export async function getPoll(id: number): Promise<Poll | null> {
+  const [polls, options] = await sql.transaction([
+    sql`SELECT id, question, closed_at IS NOT NULL AS closed FROM polls WHERE id = ${id}`,
+    sql`
+      SELECT o.id, o.label, count(v.id)::int AS votes
+      FROM options o LEFT JOIN votes v ON v.option_id = o.id
+      WHERE o.poll_id = ${id}
+      GROUP BY o.id
+      ORDER BY o.position
+    `,
+  ]);
+  const poll = polls[0];
+  if (!poll) return null;
+  return {
+    id: poll.id,
+    question: poll.question,
+    closed: poll.closed,
+    options: options.map((o) => ({ id: o.id, label: o.label, votes: o.votes })),
+  };
+}
+
+export async function getVotedOptionId(pollId: number, voterId: string): Promise<number | null> {
+  const rows = await sql`SELECT option_id FROM votes WHERE poll_id = ${pollId} AND voter_id = ${voterId}`;
+  return rows[0]?.option_id ?? null;
+}
+
+export async function createPoll(question: string, options: string[], operatorId: number): Promise<number> {
+  const rows = await sql`
+    WITH p AS (
+      INSERT INTO polls (question, created_by) VALUES (${question}, ${operatorId}) RETURNING id
+    ), o AS (
+      INSERT INTO options (poll_id, label, position)
+      SELECT p.id, t.label, t.ord FROM p, unnest(${options}::text[]) WITH ORDINALITY AS t(label, ord)
+    )
+    SELECT id FROM p
+  `;
+  return rows[0].id;
+}
+
+export async function closePoll(id: number) {
+  await sql`UPDATE polls SET closed_at = now() WHERE id = ${id} AND closed_at IS NULL`;
+}
+
+export async function deletePoll(id: number) {
+  await sql`DELETE FROM polls WHERE id = ${id}`;
+}
+
+/** Returns false if the poll is closed, the option doesn't belong to it, or this voter already voted. */
+export async function castVote(pollId: number, optionId: number, voterId: string): Promise<boolean> {
+  const rows = await sql`
+    INSERT INTO votes (poll_id, option_id, voter_id)
+    SELECT o.poll_id, o.id, ${voterId}
+    FROM options o JOIN polls p ON p.id = o.poll_id
+    WHERE o.id = ${optionId} AND o.poll_id = ${pollId} AND p.closed_at IS NULL
+    ON CONFLICT (poll_id, voter_id) DO NOTHING
+    RETURNING id
+  `;
+  return rows.length > 0;
+}
