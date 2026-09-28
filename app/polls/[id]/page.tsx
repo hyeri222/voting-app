@@ -12,8 +12,9 @@ export default async function PollPage({ params }: PageProps<"/polls/[id]">) {
   const [operatorLoggedIn, voterId] = await Promise.all([isOperator(), getVoterId()]);
   const votedOptionId = voterId ? await getVotedOptionId(poll.id, voterId) : null;
   const canVote = !poll.closed && votedOptionId === null;
-  // Results are shown only after voting, so earlier results don't sway the vote. Operators always see them.
-  const canSeeResults = votedOptionId !== null || operatorLoggedIn;
+  // While open, results are shown only after voting so they don't sway the vote; once 마감 they're
+  // public. Operators always see them.
+  const canSeeResults = poll.closed || votedOptionId !== null || operatorLoggedIn;
 
   return (
     <div className="flex flex-col gap-6">
@@ -43,17 +44,16 @@ export default async function PollPage({ params }: PageProps<"/polls/[id]">) {
         </form>
       )}
 
-      {canSeeResults ? (
-        <Results poll={poll} votedOptionId={votedOptionId} />
-      ) : (
-        poll.closed && <p className="text-zinc-500">마감된 투표입니다.</p>
-      )}
+      {poll.closed && <p className="text-zinc-500">마감된 투표입니다.</p>}
+      {canSeeResults && <Results poll={poll} votedOptionId={votedOptionId} />}
     </div>
   );
 }
 
 function Results({ poll, votedOptionId }: { poll: Poll; votedOptionId: number | null }) {
   const total = poll.options.reduce((sum, o) => sum + o.votes, 0);
+  // Every 선택지 tied for the most 표 is a winner; with no 표 there is none.
+  const topVotes = Math.max(...poll.options.map((o) => o.votes));
 
   return (
     <section className="flex flex-col gap-3">
@@ -62,12 +62,18 @@ function Results({ poll, votedOptionId }: { poll: Poll; votedOptionId: number | 
         {poll.options.map((option) => {
           const percent = total === 0 ? 0 : Math.round((option.votes / total) * 100);
           const mine = option.id === votedOptionId;
+          const winner = topVotes > 0 && option.votes === topVotes;
           return (
             <li key={option.id} className="flex flex-col gap-1">
               <div className="flex justify-between text-sm">
                 <span className={mine ? "font-semibold" : undefined}>
                   {option.label}
                   {mine && " (내 선택)"}
+                  {winner && (
+                    <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-900 dark:text-amber-200">
+                      1위
+                    </span>
+                  )}
                 </span>
                 <span className="text-zinc-500">
                   {option.votes}표 · {percent}%
@@ -75,7 +81,7 @@ function Results({ poll, votedOptionId }: { poll: Poll; votedOptionId: number | 
               </div>
               <div className="h-2 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800">
                 <div
-                  className="h-full rounded-full bg-zinc-900 dark:bg-zinc-100"
+                  className={`h-full rounded-full ${winner ? "bg-amber-500" : "bg-zinc-900 dark:bg-zinc-100"}`}
                   style={{ width: `${percent}%` }}
                 />
               </div>

@@ -51,6 +51,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           </nav>
         </header>
         <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-8">{children}</main>
+        <footer className="py-6 text-center text-xs text-zinc-400 dark:text-zinc-600">만든 사람: 이혜리</footer>
       </body>
     </html>
   );

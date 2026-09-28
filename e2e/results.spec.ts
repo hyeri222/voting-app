@@ -64,9 +64,7 @@ test("운영자는 표를 던지지 않아도 결과를 본다", async ({ browse
   await expect(page.getByText("(내 선택)")).toHaveCount(0);
 });
 
-test("마감된 투표에서 표를 던지지 않은 투표자는 결과 없이 마감 안내만 보고, 표를 던진 투표자는 결과를 계속 본다", async ({
-  browser,
-}) => {
+test("마감된 투표는 표를 던지지 않은 투표자도 마감 안내와 결과를 본다", async ({ browser }) => {
   const question = uniqueQuestion("마감 결과");
   const poll = await createPoll(browser, question, ["예", "아니요"]);
   const voted = await newVoter(browser);
@@ -78,8 +76,51 @@ test("마감된 투표에서 표를 던지지 않은 투표자는 결과 없이 
   const late = await newVoter(browser);
   await late.goto(poll);
   await expect(late.getByText("마감된 투표입니다.")).toBeVisible();
-  await expect(resultsHeading(late)).toHaveCount(0);
+  await expect(resultsHeading(late)).toHaveText("결과 · 총 1표");
+  await expect(resultRow(late, "예")).toContainText("1표 · 100%");
+  await expect(late.getByText("(내 선택)")).toHaveCount(0);
 
   await voted.reload();
   await expect(resultsHeading(voted)).toHaveText("결과 · 총 1표");
+});
+
+test("표가 가장 많은 선택지 하나에만 1위가 표시된다", async ({ browser }) => {
+  const poll = await createPoll(browser, uniqueQuestion("1위"), ["사과", "배", "감"]);
+  for (const option of ["배", "배"]) {
+    const voter = await newVoter(browser);
+    await voter.goto(poll);
+    await castVote(voter, option);
+    await voter.context().close();
+  }
+  const viewer = await newVoter(browser);
+  await viewer.goto(poll);
+  await castVote(viewer, "사과");
+
+  await expect(viewer.getByText("1위", { exact: true })).toHaveCount(1);
+  await expect(resultRow(viewer, "배")).toContainText("1위");
+  await expect(viewer.locator("li").filter({ hasText: "표 ·" })).toHaveText([/^사과/, /^배/, /^감/]);
+});
+
+test("공동 1위면 동점인 선택지마다 1위가 표시된다", async ({ browser }) => {
+  const poll = await createPoll(browser, uniqueQuestion("공동 1위"), ["빨강", "파랑", "초록"]);
+  const first = await newVoter(browser);
+  await first.goto(poll);
+  await castVote(first, "빨강");
+  const viewer = await newVoter(browser);
+  await viewer.goto(poll);
+  await castVote(viewer, "파랑");
+
+  await expect(viewer.getByText("1위", { exact: true })).toHaveCount(2);
+  await expect(resultRow(viewer, "빨강")).toContainText("1위");
+  await expect(resultRow(viewer, "파랑")).toContainText("1위");
+  await expect(resultRow(viewer, "초록")).not.toContainText("1위");
+});
+
+test("표가 없으면 1위가 표시되지 않는다", async ({ browser, page }) => {
+  const poll = await createPoll(browser, uniqueQuestion("0표"), ["예", "아니요"]);
+  await logInAsOperator(page);
+  await page.goto(poll);
+
+  await expect(resultsHeading(page)).toHaveText("결과 · 총 0표");
+  await expect(page.getByText("1위", { exact: true })).toHaveCount(0);
 });
