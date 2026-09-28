@@ -30,7 +30,7 @@ export function NewPollForm() {
           <input
             name="option"
             placeholder={`선택지 ${i + 1}`}
-            required
+            // Not required: blank 선택지 fields are ignored; the action enforces 2~10 filled ones.
             defaultValue={state.values?.options[i]}
             className={inputClass}
           />

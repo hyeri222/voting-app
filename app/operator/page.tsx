@@ -5,7 +5,7 @@ import { listPolls } from "@/lib/polls";
 import { DeletePollButton } from "./delete-poll-button";
 import { NewPollForm } from "./new-poll-form";
 
-export default async function AdminPage() {
+export default async function OperatorPage() {
   await requireOperator();
   const polls = await listPolls();
 

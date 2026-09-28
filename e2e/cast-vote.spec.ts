@@ -25,6 +25,20 @@ test("표를 던지면 투표 폼이 사라지고 새로고침해도 다시 나�
   await expect(voter.getByRole("radio")).toHaveCount(0);
 });
 
+test("같은 투표자가 오래된 폼으로 다시 제출해도 한 표만 들어가고 결과가 보인다", async ({ browser }) => {
+  const poll = await createPoll(browser, uniqueQuestion("재제출"), ["예", "아니요"]);
+  const firstTab = await newVoter(browser);
+  const staleTab = await firstTab.context().newPage();
+  await firstTab.goto(poll);
+  await staleTab.goto(poll);
+
+  await castVote(firstTab, "예");
+  await castVote(staleTab, "아니요");
+
+  await expect(staleTab.getByRole("heading", { name: /^결과 · 총/ })).toHaveText("결과 · 총 1표");
+  await expect(staleTab.getByText("예 (내 선택)")).toBeVisible();
+});
+
 test("한 투표에 표를 던져도 다른 투표에는 따로 표를 던질 수 있다", async ({ browser }) => {
   const first = await createPoll(browser, uniqueQuestion("첫 투표"), ["A", "B"]);
   const second = await createPoll(browser, uniqueQuestion("둘째 투표"), ["C", "D"]);

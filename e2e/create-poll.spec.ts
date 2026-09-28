@@ -19,7 +19,7 @@ test("선택지가 중복되면 오류가 보이고 입력한 값은 남아 있�
   await page.getByRole("button", { name: "투표 만들기" }).click();
 
   await expect(page.getByText("선택지가 중복되었습니다.")).toBeVisible();
-  await expect(page).toHaveURL("/admin");
+  await expect(page).toHaveURL("/operator");
   await expect(page.getByPlaceholder("질문")).toHaveValue(question);
   await expect(page.getByPlaceholder("선택지 1", { exact: true })).toHaveValue("사과");
   await expect(page.getByPlaceholder("선택지 2", { exact: true })).toHaveValue("사과");
@@ -31,7 +31,7 @@ test("공백뿐인 질문으로는 투표를 만들 수 없다", async ({ page }
   await page.getByRole("button", { name: "투표 만들기" }).click();
 
   await expect(page.getByText("질문을 입력하세요.")).toBeVisible();
-  await expect(page).toHaveURL("/admin");
+  await expect(page).toHaveURL("/operator");
 });
 
 test("선택지 칸은 2개 아래로 줄지 않고 10개 위로 늘지 않는다", async ({ page }) => {
@@ -49,4 +49,15 @@ test("선택지 칸은 2개 아래로 줄지 않고 10개 위로 늘지 않는�
   await page.getByRole("button", { name: "선택지 10 삭제" }).click();
   await expect(optionFields).toHaveCount(9);
   await expect(addButton).toBeVisible();
+});
+
+test("비워 둔 선택지 칸은 무시하고 투표를 만든다", async ({ page }) => {
+  const question = uniqueQuestion("빈 칸");
+  await logInAsOperator(page);
+  await fillPollForm(page, question, ["예", "아니요"]);
+  await page.getByRole("button", { name: "+ 선택지 추가" }).click();
+  await page.getByRole("button", { name: "투표 만들기" }).click();
+
+  await expect(page).toHaveURL(/\/polls\/\d+$/);
+  await expect(page.locator("label:has(input[type=radio])")).toHaveText(["예", "아니요"]);
 });

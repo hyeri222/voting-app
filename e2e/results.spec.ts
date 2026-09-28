@@ -33,10 +33,10 @@ test("표를 던지면 선택지별 표 수·퍼센트·총 표 수와 내 선�
 
 test("투표자 여러 명의 표가 정확히 집계된다", async ({ browser }) => {
   const poll = await createPoll(browser, uniqueQuestion("집계"), ["빨강", "파랑"]);
-  for (const choice of ["빨강", "빨강", "파랑", "빨강"]) {
+  for (const option of ["빨강", "빨강", "파랑", "빨강"]) {
     const voter = await newVoter(browser);
     await voter.goto(poll);
-    await castVote(voter, choice);
+    await castVote(voter, option);
     await voter.context().close();
   }
 

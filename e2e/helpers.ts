@@ -12,7 +12,7 @@ export async function logInAsOperator(page: Page) {
   await page.getByPlaceholder("아이디").fill(OPERATOR.username);
   await page.getByPlaceholder("비밀번호").fill(OPERATOR.password);
   await page.getByRole("button", { name: "로그인" }).click();
-  await expect(page).toHaveURL("/admin");
+  await expect(page).toHaveURL("/operator");
 }
 
 /** Fills the 새 투표 form on the 운영 화면; the page must already be there. */

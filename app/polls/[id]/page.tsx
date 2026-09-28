@@ -1,12 +1,12 @@
 import { notFound } from "next/navigation";
 import { voteAction } from "@/app/actions";
 import { getOperator } from "@/lib/auth";
-import { getPoll, getVotedOptionId, type Poll } from "@/lib/polls";
+import { getPoll, getVotedOptionId, parseId, type Poll } from "@/lib/polls";
 import { getVoterId } from "@/lib/voter";
 
 export default async function PollPage({ params }: PageProps<"/polls/[id]">) {
-  const id = Number((await params).id);
-  const poll = Number.isInteger(id) && id > 0 ? await getPoll(id) : null;
+  const id = parseId((await params).id);
+  const poll = id ? await getPoll(id) : null;
   if (!poll) notFound();
 
   const [operator, voterId] = await Promise.all([getOperator(), getVoterId()]);

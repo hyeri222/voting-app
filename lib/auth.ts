@@ -2,6 +2,7 @@ import "server-only";
 import { createHash, randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { secureCookie } from "./cookies";
 import { sql } from "./db";
 import { verifyPassword } from "./password.mjs";
 
@@ -26,12 +27,7 @@ export async function logIn(username: string, password: string): Promise<boolean
     INSERT INTO operator_sessions (token_hash, operator_id, expires_at)
     VALUES (${hashToken(token)}, ${row.id}, ${expiresAt})
   `;
-  (await cookies()).set(SESSION_COOKIE, token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    expires: expiresAt,
-  });
+  (await cookies()).set(SESSION_COOKIE, token, { ...secureCookie, expires: expiresAt });
   return true;
 }
 

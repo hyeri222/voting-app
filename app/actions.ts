@@ -8,18 +8,13 @@ import { getOrCreateVoterId } from "@/lib/voter";
 
 export type FormState = { error?: string };
 
-function parseId(value: FormDataEntryValue | null): number | null {
-  const id = Number(value);
-  return Number.isInteger(id) && id > 0 ? id : null;
-}
-
 export async function logInAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const username = String(formData.get("username") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   if (!(await logIn(username, password))) {
     return { error: "아이디 또는 비밀번호가 올바르지 않습니다." };
   }
-  redirect("/admin");
+  redirect("/operator");
 }
 
 export async function logOutAction() {
@@ -51,7 +46,7 @@ export async function createPollAction(_prev: PollFormState, formData: FormData)
 
 export async function closePollAction(formData: FormData) {
   await requireOperator();
-  const id = parseId(formData.get("pollId"));
+  const id = polls.parseId(formData.get("pollId"));
   if (!id) return;
   await polls.closePoll(id);
   revalidatePath("/", "layout");
@@ -59,15 +54,15 @@ export async function closePollAction(formData: FormData) {
 
 export async function deletePollAction(formData: FormData) {
   await requireOperator();
-  const id = parseId(formData.get("pollId"));
+  const id = polls.parseId(formData.get("pollId"));
   if (!id) return;
   await polls.deletePoll(id);
   revalidatePath("/", "layout");
 }
 
 export async function voteAction(formData: FormData) {
-  const pollId = parseId(formData.get("pollId"));
-  const optionId = parseId(formData.get("optionId"));
+  const pollId = polls.parseId(formData.get("pollId"));
+  const optionId = polls.parseId(formData.get("optionId"));
   if (!pollId || !optionId) return;
   const voterId = await getOrCreateVoterId();
   // A rejected vote (closed poll, repeat vote) just falls through to the refreshed page.

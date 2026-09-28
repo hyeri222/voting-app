@@ -1,6 +1,7 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { cookies } from "next/headers";
+import { secureCookie } from "./cookies";
 
 // One browser = one voter. Clearing cookies or a private window gets a new voter id.
 const VOTER_COOKIE = "voter_id";
@@ -16,11 +17,6 @@ export async function getOrCreateVoterId(): Promise<string> {
   if (existing) return existing;
 
   const voterId = randomUUID();
-  store.set(VOTER_COOKIE, voterId, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 365,
-  });
+  store.set(VOTER_COOKIE, voterId, { ...secureCookie, maxAge: 60 * 60 * 24 * 365 });
   return voterId;
 }

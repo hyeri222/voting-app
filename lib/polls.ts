@@ -4,6 +4,12 @@ import { sql } from "./db";
 export const MIN_OPTIONS = 2;
 export const MAX_OPTIONS = 10;
 
+/** Parses a 투표 or 선택지 id from a URL segment or form field; null if it isn't a positive integer. */
+export function parseId(value: unknown): number | null {
+  const id = Number(value);
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
+
 export type PollSummary = {
   id: number;
   question: string;
