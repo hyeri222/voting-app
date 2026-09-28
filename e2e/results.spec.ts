@@ -1,0 +1,85 @@
+import { expect, test, type Page } from "@playwright/test";
+import { castVote, closePoll, createPoll, logInAsOperator, newVoter, uniqueQuestion } from "./helpers";
+
+const resultsHeading = (page: Page) => page.getByRole("heading", { name: /^결과 · 총/ });
+const resultRow = (page: Page, label: string) =>
+  page.getByRole("listitem").filter({ has: page.getByText(label, { exact: false }) });
+
+test("표를 던지기 전에는 결과가 보이지 않는다", async ({ browser }) => {
+  const poll = await createPoll(browser, uniqueQuestion("결과 숨김"), ["예", "아니요"]);
+  const voter = await newVoter(browser);
+
+  await voter.goto(poll);
+
+  await expect(voter.getByRole("button", { name: "투표하기" })).toBeVisible();
+  await expect(resultsHeading(voter)).toHaveCount(0);
+  await expect(voter.getByText(/\d+표 · \d+%/)).toHaveCount(0);
+});
+
+test("표를 던지면 선택지별 표 수·퍼센트·총 표 수와 내 선택이 보인다", async ({ browser }) => {
+  const poll = await createPoll(browser, uniqueQuestion("결과 공개"), ["고양이", "강아지", "앵무새"]);
+  const voter = await newVoter(browser);
+  await voter.goto(poll);
+
+  await castVote(voter, "강아지");
+
+  await expect(resultsHeading(voter)).toHaveText("결과 · 총 1표");
+  await expect(resultRow(voter, "강아지")).toContainText("강아지 (내 선택)");
+  await expect(resultRow(voter, "강아지")).toContainText("1표 · 100%");
+  await expect(resultRow(voter, "고양이")).toContainText("0표 · 0%");
+  await expect(resultRow(voter, "고양이")).not.toContainText("내 선택");
+  await expect(resultRow(voter, "앵무새")).toContainText("0표 · 0%");
+});
+
+test("투표자 여러 명의 표가 정확히 집계된다", async ({ browser }) => {
+  const poll = await createPoll(browser, uniqueQuestion("집계"), ["빨강", "파랑"]);
+  for (const choice of ["빨강", "빨강", "파랑", "빨강"]) {
+    const voter = await newVoter(browser);
+    await voter.goto(poll);
+    await castVote(voter, choice);
+    await voter.context().close();
+  }
+
+  const viewer = await newVoter(browser);
+  await viewer.goto(poll);
+  await castVote(viewer, "파랑");
+
+  // viewer 포함: 빨강 3표, 파랑 2표 → 60% / 40%
+  await expect(resultsHeading(viewer)).toHaveText("결과 · 총 5표");
+  await expect(resultRow(viewer, "빨강")).toContainText("3표 · 60%");
+  await expect(resultRow(viewer, "파랑")).toContainText("2표 · 40%");
+});
+
+test("운영자는 표를 던지지 않아도 결과를 본다", async ({ browser, page }) => {
+  const poll = await createPoll(browser, uniqueQuestion("운영자 결과"), ["예", "아니요"]);
+  const voter = await newVoter(browser);
+  await voter.goto(poll);
+  await castVote(voter, "아니요");
+
+  await logInAsOperator(page);
+  await page.goto(poll);
+
+  await expect(resultsHeading(page)).toHaveText("결과 · 총 1표");
+  await expect(resultRow(page, "아니요")).toContainText("1표 · 100%");
+  await expect(page.getByText("(내 선택)")).toHaveCount(0);
+});
+
+test("마감된 투표에서 표를 던지지 않은 투표자는 결과 없이 마감 안내만 보고, 표를 던진 투표자는 결과를 계속 본다", async ({
+  browser,
+}) => {
+  const question = uniqueQuestion("마감 결과");
+  const poll = await createPoll(browser, question, ["예", "아니요"]);
+  const voted = await newVoter(browser);
+  await voted.goto(poll);
+  await castVote(voted, "예");
+
+  await closePoll(browser, question);
+
+  const late = await newVoter(browser);
+  await late.goto(poll);
+  await expect(late.getByText("마감된 투표입니다.")).toBeVisible();
+  await expect(resultsHeading(late)).toHaveCount(0);
+
+  await voted.reload();
+  await expect(resultsHeading(voted)).toHaveText("결과 · 총 1표");
+});
